@@ -1,0 +1,86 @@
+<?php
+
+$xml = simplexml_load_file($argv[1]);
+
+$publishers = [];
+
+function download_publisher($publisherId) {
+	mkdir("publishers/" . $publisherId);
+	$page = 1;
+	do {
+		echo "[INFO] $publisherId/$page\n";
+		$url ="https://api.geekdo.com/api/geekitem/linkeditems?ajax=1&linkdata_index=boardgame&nosession=1&objectid=$publisherId&objecttype=company&pageid=$page&showcount=50&sort=rank&subtype=boardgamepublisher";
+		$c = file_get_contents($url);
+		$data = json_decode($c, true);
+		file_put_contents("publishers/$publisherId/$page.json", $c);
+		$page+=1;
+	} while (count($data['items']) > 0);
+}
+
+$games = [];
+
+$gameToPublisherMapping = [];
+
+function add_to_list($publisherId) {
+	global $games;
+	global $gameToPublisherMapping;
+	foreach(glob("publishers/$publisherId/*.json") as $f) {
+		$d = json_decode(file_get_contents($f), true);
+		$games = array_merge($games, $d['items']);
+		foreach($d['items'] as $game) {
+			$gameId = (string)$game['objectid'];
+			if (isset($gameToPublisherMapping[$gameId])) {
+				$gameToPublisherMapping[$gameId][] = $publisherId;
+			} else {
+				$gameToPublisherMapping[$gameId] = [$publisherId];
+			}
+		}
+	}
+}
+
+foreach($xml->item as $item) {
+	if ($item['subtype'] == 'boardgamepublisher') {
+		$publisherId = (string)$item['objectid'];
+		$publishers[$publisherId] = $item['objectname'];
+		download_publisher($publisherId);
+		add_to_list($publisherId);
+	}
+}
+
+$x = [];
+
+echo count($games) . PHP_EOL;
+$games = array_filter($games, function($value) {
+   global $x;
+   if (isset($x[$value['objectid']])) {
+   	return false;
+   } else {
+   	$x[$value['objectid']] = true;
+   	return true;
+   }
+}, ARRAY_FILTER_USE_BOTH);
+
+echo count($games) . PHP_EOL;
+usort($games, function($a, $b){
+ if ($b['rank'] == 0) {
+ 	return -1;
+ }
+ if ($a['rank'] == 0) {
+ 	return 1;
+ }
+ return $a['rank'] - $b['rank'];
+});
+
+foreach(array_slice($games, 0, 10000) as $game) {
+	if ((int)$game['rank'] == 0) {
+		continue;
+	}
+	echo $game['rank'] . "|". $game['name'] . " |";
+	$gameId = (string)$game['objectid'];
+	$p = [];
+	foreach ($gameToPublisherMapping[$gameId] as $publisherId) {
+		$p[] = $publishers[$publisherId];
+	}
+	echo implode(", ", array_unique($p));
+	echo "\n";
+}
