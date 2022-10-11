@@ -2,6 +2,8 @@
 
 List of games either published by Asmodee, or via a exclusive partnership with another publisher. Data is based on the Asmodee Publisher List created by @toothygrim, @zachpas, and @hexahedron on [BoardGameGeek](https://boardgamegeek.com/geeklist/269452/asmodee-publisher-list).
 
+This isn't a very reliable list, since publication does not necessary equal control of the IP. Probably more filtering can be done by taking that into account somehow.
+
 ## Top Boardgames
 
 Asmodee's dominance in the "Top 100 Boardgames" as ranked by BGG users (taking into account the number of users rating it, among other things).
