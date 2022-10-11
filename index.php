@@ -3,6 +3,8 @@
 $xml = simplexml_load_file($argv[1]);
 
 $publishers = [];
+$games = [];
+$gameToPublisherMapping = [];
 
 function download_publisher($publisherId) {
 	mkdir("publishers/" . $publisherId);
@@ -16,10 +18,6 @@ function download_publisher($publisherId) {
 		$page+=1;
 	} while (count($data['items']) > 0);
 }
-
-$games = [];
-
-$gameToPublisherMapping = [];
 
 function add_to_list($publisherId) {
 	global $games;
@@ -41,15 +39,17 @@ function add_to_list($publisherId) {
 foreach($xml->item as $item) {
 	if ($item['subtype'] == 'boardgamepublisher') {
 		$publisherId = (string)$item['objectid'];
-		$publishers[$publisherId] = $item['objectname'];
-		download_publisher($publisherId);
+		$publishers[$publisherId] = [
+			'name' => (string) $item['objectname'],
+			'link' => (string) "https://boardgamegeek.com/geeklist/269452/asmodee-publisher-list?itemid=" . $item['id']
+		];
+		// download_publisher($publisherId);
 		add_to_list($publisherId);
 	}
 }
 
 $x = [];
 
-echo count($games) . PHP_EOL;
 $games = array_filter($games, function($value) {
    global $x;
    if (isset($x[$value['objectid']])) {
@@ -60,7 +60,6 @@ $games = array_filter($games, function($value) {
    }
 }, ARRAY_FILTER_USE_BOTH);
 
-echo count($games) . PHP_EOL;
 usort($games, function($a, $b){
  if ($b['rank'] == 0) {
  	return -1;
@@ -71,16 +70,27 @@ usort($games, function($a, $b){
  return $a['rank'] - $b['rank'];
 });
 
-foreach(array_slice($games, 0, 10000) as $game) {
+foreach($games as $game) {
 	if ((int)$game['rank'] == 0) {
 		continue;
 	}
-	echo $game['rank'] . "|". $game['name'] . " |";
+	$link = "https://boardgamegeek.com/boardgame/" . $game['objectid'];
+	echo $game['rank'] . " | [". $game['name'] . "]($link) |";
 	$gameId = (string)$game['objectid'];
 	$p = [];
 	foreach ($gameToPublisherMapping[$gameId] as $publisherId) {
-		$p[] = $publishers[$publisherId];
+		$n = $publishers[$publisherId]['name'];
+		$link = $publishers[$publisherId]['link'];
+		$p[] = "[$n][p-$publisherId]";
 	}
 	echo implode(", ", array_unique($p));
 	echo "\n";
+}
+
+echo "\n\n";
+
+foreach($publishers as $publisherId => $p) {
+	$link = $p['link'];
+	$name = $p['name'];
+	echo "[p-$publisherId]: $link '$name'\n";
 }
